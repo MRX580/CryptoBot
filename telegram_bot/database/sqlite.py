@@ -71,11 +71,9 @@ class spot_database(database):
 class telegram_database(database):
     def __init__(self, telegram_id):
         super().__init__(telegram_id)
-        if self.isUserInDatabase():
+        if not self.isUserInDatabase():
             self._cur.execute(f"INSERT INTO general_info VALUES (?,?,?,?,?)",
                               (self.telegram_id, '', '', '', ''))
-            self._con.commit()
-
             self._con.commit()
 
         data = self._cur.execute('SELECT * FROM general_info')
