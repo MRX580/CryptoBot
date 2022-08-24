@@ -21,7 +21,6 @@ class BinanceClient:
             '30m': '30 hours ago UTC',
             '1h': '60 hours ago UTC',
             '4h': '240 hours ago UTC',
-            '1d': '1440 hours ago UTC',
         }
         temp = []
         klines = self.__client.get_historical_klines_generator(self.coin.upper(), Client.KLINE_INTERVAL_1MINUTE,

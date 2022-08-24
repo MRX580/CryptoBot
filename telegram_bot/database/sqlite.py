@@ -1,6 +1,7 @@
 import sqlite3
 from datetime import datetime
 
+
 class database:
     _con = sqlite3.connect('data.db')
     _cur = _con.cursor()
@@ -15,7 +16,7 @@ class database:
             pass
         try:
             self._cur.execute('''CREATE TABLE general_info
-                           (telegram_id text, profit TEXT, procent TEXT, general_money TEXT, piece TEXT)''')
+                           (telegram_id text, profit TEXT, procent TEXT, general_money TEXT, piece TEXT, timeframe TEXT)''')
         except sqlite3.OperationalError:
             pass
         try:
@@ -30,7 +31,6 @@ class database:
             if self.telegram_id == i[0]:
                 return True
         return False
-
 
 
 class spot_database(database):
@@ -72,8 +72,8 @@ class telegram_database(database):
     def __init__(self, telegram_id):
         super().__init__(telegram_id)
         if not self.isUserInDatabase():
-            self._cur.execute(f"INSERT INTO general_info VALUES (?,?,?,?,?)",
-                              (self.telegram_id, '', '', '', ''))
+            self._cur.execute(f"INSERT INTO general_info VALUES (?,?,?,?,?,?)",
+                              (self.telegram_id, '', '', '', '', ''))
             self._con.commit()
 
         data = self._cur.execute('SELECT * FROM general_info')
@@ -83,6 +83,7 @@ class telegram_database(database):
                 self.__procent = i[2]
                 self.__general_money = i[3]
                 self.__piece = i[4]
+                self.__timeframe = i[5]
 
     def addApis(self, API_key, Secret_Key, first_name):
         if not self.isUserInDatabase():
@@ -105,6 +106,9 @@ class telegram_database(database):
     def get_piece(self):
         return self.__piece
 
+    def get_timeframe(self):
+        return self.__timeframe
+
     def set_profit(self, profit):
         self._cur.execute(f"UPDATE general_info SET profit = '{profit}' WHERE telegram_id = {self.telegram_id}")
         self._con.commit()
@@ -120,4 +124,8 @@ class telegram_database(database):
 
     def set_piece(self, piece):
         self._cur.execute(f"UPDATE general_info SET piece = '{piece}' WHERE telegram_id = {self.telegram_id}")
+        self._con.commit()
+
+    def set_timeframe(self, arefm):
+        self._cur.execute(f"UPDATE general_info SET timeframe = '{arefm}' WHERE telegram_id = {self.telegram_id}")
         self._con.commit()
