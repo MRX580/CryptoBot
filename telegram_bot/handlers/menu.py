@@ -3,6 +3,7 @@ from aiogram import types, Dispatcher
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from telegram_bot.database.sqlite import telegram_database
+from utills.binanceUtills import BinanceClient
 from telegram_bot.create_tg import bot
 from aiogram.dispatcher.filters import Text
 
@@ -20,6 +21,7 @@ class settingsState(StatesGroup):
     set_general_money = State()
     set_piece = State()
     set_timeframe = State()
+    set_coin = State()
 
 
 cancelMarkup = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=1)
@@ -32,8 +34,8 @@ async def help(message: types.Message):
 
 async def menu(message: types.Message):
     markup = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=3)
-    markup.add('settings', 'stats', 'logs', 'start_work')
-    await bot.send_message(message.chat.id, 'start_work - начать работу бота(сделать остановку)\n'
+    markup.add('settings', 'stats', 'logs', 'switch_work')
+    await bot.send_message(message.chat.id, 'switch_work(on/off) - включить/выключить бота\n'
                                             'settings - настройки бота\n'
                                             'stats - статистика бота\n'
                                             'logs - все ордера', reply_markup=markup)
@@ -41,20 +43,22 @@ async def menu(message: types.Message):
 
 async def settingsInterface(message: types.Message):
     markup = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-    markup.row('Профит', 'Процент', "Сумму торговли").row("Сумму покупки за сделку", "Таймфрейм").add(
+    markup.row('Профит', 'Процент', "Сумму торговли").row("Сумму покупки за сделку", "Таймфрейм", "Монету").add(
         "Вернуться в меню")
     telegram_client = telegram_database(message.chat.id)
     setting = {'profit': telegram_client.get_profit(),
                'procent': telegram_client.get_procent(),
                'general_money': telegram_client.get_general_money(),
                'piece': telegram_client.get_piece(),
-               'timeframe': telegram_client.get_timeframe()
+               'timeframe': telegram_client.get_timeframe(),
+               'coin': telegram_client.get_coin()
                }
     await bot.send_message(message.chat.id, f'Профит за сделку в процентах(рекомендуемый 1): {setting["profit"]}%\n'
-                                            f'Процент который при падении монеты будет докупать монету(рекомендуемый 4+): {setting["procent"]}\n'
-                                            f'Сумма на которой бот может торговать: {setting["general_money"]}\n'
-                                            f'Сумма на которую бот будет покупать за сделку(миниммум 11$): {setting["piece"]}\n'
-                                            f'Выбранный таймфрейм: {setting["timeframe"]}\n\n'
+                                            f'Процент который при падении монеты будет докупать монету(рекомендуемый 4+): {setting["procent"]}%\n'
+                                            f'Сумма на которой бот может торговать: {setting["general_money"]}$\n'
+                                            f'Сумма на которую бот будет покупать за сделку(миниммум 11$): {setting["piece"]}$\n'
+                                            f'Выбранный таймфрейм: {setting["timeframe"]}\n'
+                                            f'Выбранная монета (BTCUSDT): {setting["coin"]}\n\n'
                                             f'Выберите что изменить:', reply_markup=markup)
 
 async def isRegister(message: types.Message):
@@ -115,6 +119,9 @@ async def general_money(message: types.Message):
 
 
 async def set_piece(message: types.Message, state: FSMContext):
+    if int(message.text) < 11:
+        await bot.send_message(message.chat.id, 'Сумма должна быть 11+$')
+        return
     await bot.send_message(message.chat.id, f'Сумма покупки 1 сделки установленна: {message.text}$')
     telegram_database(message.chat.id).set_piece(message.text)
     await state.finish()
@@ -153,6 +160,21 @@ async def timeframe(message: types.Message):
                                             'Введите нужный таймфрейм:', reply_markup=cancelMarkup)
 
 
+async def set_coin(message: types.Message, state: FSMContext):
+    if BinanceClient(message.chat.id).isCoin(message.text):
+        await bot.send_message(message.chat.id, f'Сумма покупки 1 сделки установленна: {message.text}$')
+        telegram_database(message.chat.id).set_coin(message.text)
+        await state.finish()
+        await settingsInterface(message)
+    else:
+        await bot.send_message(message.chat.id, 'Такой монеты не сущевствует, попробуйте еще раз')
+
+
+async def coin(message: types.Message):
+    await settingsState.set_coin.set()
+    await bot.send_message(message.chat.id, 'Введите название монеты:', reply_markup=cancelMarkup)
+
+
 async def stats(message: types.Message):
     await bot.send_message(message.chat.id, 'В разработке')
     pass
@@ -163,7 +185,7 @@ async def logs(message: types.Message):
     pass
 
 
-async def start_work(message: types.Message):
+async def switch_work(message: types.Message):
     await bot.send_message(message.chat.id, 'В разработке')
     pass
 
@@ -194,7 +216,11 @@ def register_handlers_menu(dp: Dispatcher):
     dp.register_message_handler(timeframe, Text(equals='таймфрейм', ignore_case=True))
     dp.register_message_handler(set_timeframe, state=settingsState.set_timeframe)
 
+    dp.register_message_handler(coin, Text(equals='монету', ignore_case=True))
+    dp.register_message_handler(set_coin, state=settingsState.set_coin)
+
     dp.register_message_handler(settings, Text(equals='settings', ignore_case=True))
     dp.register_message_handler(stats, Text(equals='stats', ignore_case=True))
     dp.register_message_handler(logs, Text(equals='logs', ignore_case=True))
-    dp.register_message_handler(start_work, Text(equals='start_work', ignore_case=True))
+    dp.register_message_handler(switch_work, Text(equals='switch_work(on)', ignore_case=True))
+    dp.register_message_handler(switch_work, Text(equals='switch_work(off)', ignore_case=True))

@@ -1,18 +1,28 @@
+import binance.exceptions
+
 from telegram_bot.database.sqlite import spot_database
 import math
 from binance.client import Client
 from dotenv import find_dotenv, load_dotenv
-import os
 load_dotenv(find_dotenv())
 class BinanceClient:
-    __client = Client(os.getenv('API_KEY'), os.getenv('Secret_key'))
 
-    def __init__(self, coin, profit, tf, usdt):
-        self.coin = coin.upper()
+    def __init__(self, telegram_id):
+        data = spot_database(telegram_id)
+        api, secret_key = data.get_api(), data.get_secret_key()
+        self.__client = Client(api, secret_key)
+        self.coin =  data.get_coin()
         self.priceCoin = float(self.__client.get_symbol_ticker(symbol=self.coin)['price'])
-        self.profit = profit
-        self.tf = tf
-        self.usdt = usdt
+        self.profit = data.get_profit()
+        self.tf = data.get_timeframe()
+        self.usdt = data.get_piece() # сделать формулу на ограничение с общей валютой
+
+    def isCoin(self, coin):
+        try:
+            self.__client.get_symbol_ticker(symbol=coin.upper())
+            return True
+        except binance.exceptions.BinanceAPIException:
+            return False
 
     def get_coin_average(self, tf):
         timeFrame = {
@@ -23,7 +33,7 @@ class BinanceClient:
             '4h': '240 hours ago UTC',
         }
         temp = []
-        klines = self.__client.get_historical_klines_generator(self.coin.upper(), Client.KLINE_INTERVAL_1MINUTE,
+        klines = self.__client.get_historical_klines_generator(self.coin, Client.KLINE_INTERVAL_1MINUTE,
                                                                  timeFrame[f'{tf}'])
         for i in klines:
             temp.append((float(i[2]) + float(i[3])) / 2)
@@ -64,4 +74,3 @@ class BinanceClient:
             price=round(self.__formula(price_coin),4)
         )
         print('Ордер на продажу создан для - ', telegram_id)
-
