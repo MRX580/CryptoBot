@@ -162,7 +162,7 @@ async def timeframe(message: types.Message):
 
 async def set_coin(message: types.Message, state: FSMContext):
     if BinanceClient(message.chat.id).isCoin(message.text):
-        await bot.send_message(message.chat.id, f'Сумма покупки 1 сделки установленна: {message.text}$')
+        await bot.send_message(message.chat.id, f'Сумма покупки 1 сделки установленна: {message.text}')
         telegram_database(message.chat.id).set_coin(message.text)
         await state.finish()
         await settingsInterface(message)
