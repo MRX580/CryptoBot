@@ -117,7 +117,7 @@ class telegram_database(database):
     def addApis(self, API_key, Secret_Key, first_name):
         if not self.isUserInDatabase():
             self._cur.execute(f"INSERT INTO users VALUES ('{self.telegram_id}','{API_key}','{Secret_Key}',"
-                              f"'{first_name}','{datetime.now()}')")
+                              f"'{first_name}','','{datetime.now()}')")
 
             self._con.commit()
         else:

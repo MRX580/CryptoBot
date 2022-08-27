@@ -1,5 +1,7 @@
-import binance.exceptions
+import os
 
+import binance.exceptions
+from datetime import datetime
 from telegram_bot.database.sqlite import spot_database
 import math
 from binance.client import Client
@@ -15,10 +17,15 @@ class BinanceClient:
         self.telegram_id = telegram_id
         self.__client = Client(api, secret_key)
         self.coin = data.get_coin()
-        self.priceCoin = float(self.__client.get_symbol_ticker(symbol=self.coin)['price'])
+        try:
+            self.priceCoin = float(self.__client.get_symbol_ticker(symbol=self.coin)['price'])
+        except binance.exceptions.BinanceAPIException:
+            pass
         self.profit = data.get_profit()
         self.tf = data.get_timeframe()
         self.usdt = data.get_piece()  # сделать формулу на ограничение с общей валютой
+        self.procent = data.get_procent()
+        self.general_money = data.get_general_money()
 
     def isCoin(self, coin):
         try:
@@ -45,8 +52,21 @@ class BinanceClient:
     def __formula(self, price_coin):
         return round(price_coin * (self.profit + 0.25) / 100 + price_coin, 4)
 
+    def takeAllOders(self):
+        return [
+            'Symbol - %s. Price - %s. Count - %s. Side %s. Time %s' % (
+            i["symbol"], i["price"], i["origQty"], i["side"],
+            datetime.fromtimestamp(i['time'] / 1000).strftime('%Y-%m-%d %H:%M:%S'))
+            for i in self.__client.get_all_orders(symbol='XRPUSDT')
+        ]
+
     def check_orders(self):
         self.__client.get_all_orders()
+
+    def isReadyToWork(self):
+        if self.coin and self.profit and self.usdt and self.tf and self.procent and self.general_money:
+            return True
+        return False
 
     def cycleBuyAndSell(self):
         buyCoin = math.floor(self.usdt / self.get_coin_average(self.tf))
@@ -71,5 +91,3 @@ class BinanceClient:
             price=round(self.__formula(price_coin), 4)
         )
         print('Ордер на продажу создан для - ', self.telegram_id)
-
-

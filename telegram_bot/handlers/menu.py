@@ -186,8 +186,10 @@ async def logs(message: types.Message):
 
 
 async def switch_work(message: types.Message):
-    await bot.send_message(message.chat.id, 'В разработке')
-    pass
+    if BinanceClient(message.chat.id).isReadyToWork():
+        await bot.send_message(message.chat.id, 'Все еще в разработке..')
+        return
+    await bot.send_message(message.chat.id, 'Введите все данные в settings')
 
 
 def register_handlers_menu(dp: Dispatcher):
