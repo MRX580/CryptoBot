@@ -34,8 +34,8 @@ async def help(message: types.Message):
 
 async def menu(message: types.Message):
     markup = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=3)
-    markup.add('settings', 'stats', 'logs', 'switch_work')
-    await bot.send_message(message.chat.id, 'switch_work(on/off) - включить/выключить бота\n'
+    markup.add('settings', 'stats', 'logs', f'start_work({telegram_database(message.chat.id).get_work()})')
+    await bot.send_message(message.chat.id, 'start_work(on/off) - включить/выключить бота\n'
                                             'settings - настройки бота\n'
                                             'stats - статистика бота\n'
                                             'logs - все ордера', reply_markup=markup)
@@ -177,20 +177,31 @@ async def coin(message: types.Message):
 
 async def stats(message: types.Message):
     await bot.send_message(message.chat.id, 'В разработке')
-    pass
+
 
 
 async def logs(message: types.Message):
-    await bot.send_message(message.chat.id, 'В разработке')
-    pass
-
-
-async def switch_work(message: types.Message):
     if BinanceClient(message.chat.id).isReadyToWork():
-        await bot.send_message(message.chat.id, 'Все еще в разработке..')
+        with open('logs.txt', 'w') as w:
+            w.write('')
+        with open('logs.txt', 'a') as w:
+            for i in BinanceClient(message.chat.id).takeAllOders():
+                w.write(i)
+        await bot.send_document(message.chat.id, open('logs.txt', 'rb'))
+        await menu(message)
         return
     await bot.send_message(message.chat.id, 'Введите все данные в settings')
+    await menu(message)
 
+
+async def start_work(message: types.Message):
+    if BinanceClient(message.chat.id).isReadyToWork():
+        await bot.send_message(message.chat.id, 'Все еще в разработке..')
+        telegram_database(message.chat.id).switch_work()
+        await menu(message)
+        return
+    await bot.send_message(message.chat.id, 'Введите все данные в settings')
+    await menu(message)
 
 def register_handlers_menu(dp: Dispatcher):
     dp.register_message_handler(help, commands=['help'])
@@ -224,5 +235,5 @@ def register_handlers_menu(dp: Dispatcher):
     dp.register_message_handler(settings, Text(equals='settings', ignore_case=True))
     dp.register_message_handler(stats, Text(equals='stats', ignore_case=True))
     dp.register_message_handler(logs, Text(equals='logs', ignore_case=True))
-    dp.register_message_handler(switch_work, Text(equals='switch_work(on)', ignore_case=True))
-    dp.register_message_handler(switch_work, Text(equals='switch_work(off)', ignore_case=True))
+    dp.register_message_handler(start_work, Text(equals='start_work(on)', ignore_case=True))
+    dp.register_message_handler(start_work, Text(equals='start_work(off)', ignore_case=True))

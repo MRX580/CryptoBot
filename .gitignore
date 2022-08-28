@@ -2,3 +2,4 @@ venv
 .env
 .idea
 telegram_bot/data.db
+telegram_bot/logs.txt
