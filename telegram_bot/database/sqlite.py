@@ -11,18 +11,18 @@ class database:
     def __init__(self, telegram_id):
         self.telegram_id = str(telegram_id)
         try:
-            self._cur.execute('''CREATE TABLE users
-                           (telegram_id text, API_key text, Secret_Key text, first_name text, isWork TEXT, profit TEXT, hardProcent TEXT, date text)''')
+            self._cur.execute('''CREATE TABLE users (telegram_id text, API_key text, Secret_Key text, first_name 
+            TEXT, isWork TEXT, profit TEXT, date text)''')
         except sqlite3.OperationalError:
             pass
         try:
-            self._cur.execute('''CREATE TABLE general_info
-                           (telegram_id text, profit TEXT, procent TEXT, general_money TEXT, piece TEXT, timeframe TEXT, coin TEXT)''')
+            self._cur.execute('''CREATE TABLE general_info (telegram_id text, profit TEXT, procent TEXT, 
+            general_money TEXT, piece TEXT, timeframe TEXT, coin TEXT)''')
         except sqlite3.OperationalError:
             pass
         try:
-            self._cur.execute('''CREATE TABLE orders
-                           (telegram_id text, quantity text, coin text, price_coin text, side text, count text, date text)''')
+            self._cur.execute('''CREATE TABLE orders (telegram_id text, quantity text, coin text, price_coin text, 
+            side text, count text, date text)''')
         except sqlite3.OperationalError:
             pass
         data = self._cur.execute('SELECT * FROM users')
@@ -31,6 +31,7 @@ class database:
                 self.api = i[1]
                 self.secret_key = i[2]
                 self.work = i[4]
+                self.userProfit = i[5]
 
         data = self._cur.execute('SELECT * FROM general_info')
         for i in data.fetchall():
@@ -50,15 +51,13 @@ class database:
         return False
 
     def addProfit(self, profit):
-        #profit TEXT, hardProcent TEXT
         data = self._cur.execute('SELECT * FROM users')
+        profitdb = 0
         for i in data.fetchall():
             if self.telegram_id == i[0]:
-                profitdb, hardProcent = float(i[5]), float(i[6])
+                profitdb = float(i[5])
         profitdb += float(profit)
-        hardProcent += profitdb
         self._cur.execute(f"UPDATE users SET profit = '{profitdb}' WHERE telegram_id = {self.telegram_id}")
-        self._cur.execute(f"UPDATE users SET hardProcent = '{hardProcent}' WHERE telegram_id = {self.telegram_id}")
 
     def deleteOrder(self, price):
         self._cur.execute(f'DELETE FROM orders WHERE price_coin = "{price}";')
@@ -91,6 +90,10 @@ class database:
     def get_work(self):
         return self.work
 
+    def get_userProfit(self):
+        return self.userProfit
+
+
 class spot_database(database):
     def __init__(self, telegram_id):
         super().__init__(telegram_id)
@@ -116,7 +119,7 @@ class spot_database(database):
 
     def checkCountPercent(self, price_coin):
         mass = []
-        max = math.floor(30/self.get_procent())+1
+        max = math.floor(30/float(self.get_procent()))+1
         data = self._cur.execute('SELECT * FROM orders')
         for i in data.fetchall():
             if self.telegram_id == i[0]:
@@ -128,7 +131,6 @@ class spot_database(database):
             return 1
         if mass[0][0] < (price_coin - (price_coin * self._procent / 100)) * (mass[0][1]):
             return mass[0][1] + 1
-        return False
 
 
 class telegram_database(database):
@@ -139,7 +141,7 @@ class telegram_database(database):
     def addApis(self, API_key, Secret_Key, first_name):
         if not self.isUserInDatabase():
             self._cur.execute(f"INSERT INTO users VALUES ('{self.telegram_id}','{API_key}','{Secret_Key}',"
-                              f"'{first_name}','off', '', '', '{datetime.now()}')")
+                              f"'{first_name}','off', '0', '{datetime.now()}')")
             self._cur.execute(f"INSERT INTO general_info VALUES (?,?,?,?,?,?,?)",
                               (self.telegram_id, '', '', '', '', '', ''))
             self._con.commit()

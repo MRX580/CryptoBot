@@ -1,3 +1,5 @@
+import math
+
 from aiogram.types import ReplyKeyboardMarkup
 from aiogram import types, Dispatcher
 from aiogram.dispatcher import FSMContext
@@ -176,9 +178,28 @@ async def coin(message: types.Message):
 
 
 async def stats(message: types.Message):
-    await bot.send_message(message.chat.id, 'В разработке')
-
-
+    if BinanceClient(message.chat.id).isReadyToWork():
+        telegram_data = telegram_database(message.chat.id)
+        mass = []
+        max = math.floor(30 / float(telegram_data.get_procent())) + 1
+        data = telegram_data._cur.execute('SELECT * FROM orders')
+        for i in data.fetchall():
+            if message.chat.id == i[0]:
+                mass.append([float(i[3]), int(i[5])])
+        mass.sort()
+        if not mass:
+            position = 0
+        else:
+            if max == mass[0][1]:
+                position = max
+            else:
+                position = mass[0][1]
+        await bot.send_message(message.chat.id, f'Общая сумма / сумма с профитом {telegram_data.get_general_money()} / {int(telegram_data.get_general_money()) + int(telegram_data.get_userProfit())}\n'
+                                                f'Профит: {telegram_data.get_userProfit()}\n'
+                                                f'Сколько позиций в ожидании: {position}')
+        return
+    await bot.send_message(message.chat.id, 'Введите все данные в settings')
+    await menu(message)
 
 async def logs(message: types.Message):
     if BinanceClient(message.chat.id).isReadyToWork():
